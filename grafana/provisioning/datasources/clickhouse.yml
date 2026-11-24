@@ -1,0 +1,19 @@
+apiVersion: 1
+
+datasources:
+  - name: ClickHouse
+    type: grafana-clickhouse-datasource
+    access: proxy
+    uid: clickhouse
+    isDefault: true
+    editable: true
+    jsonData:
+      host: clickhouse
+      port: 9000
+      protocol: native
+      username: default
+      defaultDatabase: cinema
+      timeout: 60
+    secureJsonData:
+      password: clickhouse
+    version: 1

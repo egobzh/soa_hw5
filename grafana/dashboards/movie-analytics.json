@@ -1,0 +1,235 @@
+{
+  "uid": "movie-analytics",
+  "title": "Online Cinema — Analytics",
+  "tags": ["online-cinema", "kafka", "clickhouse"],
+  "timezone": "utc",
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "30s",
+  "time": { "from": "now-14d", "to": "now" },
+  "annotations": { "list": [] },
+  "templating": { "list": [] },
+  "links": [],
+  "panels": [
+    {
+      "id": 1,
+      "type": "table",
+      "title": "Retention Cohort Heatmap (Day 0–Day 7, % когорты)",
+      "description": "Когорта = дата первого просмотра пользователя. Ячейка = % вернувшихся в Day N. Данные — материализованная таблица cinema.cohort_retention.",
+      "datasource": { "type": "grafana-clickhouse-datasource", "uid": "clickhouse" },
+      "gridPos": { "h": 9, "w": 24, "x": 0, "y": 0 },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": { "type": "grafana-clickhouse-datasource", "uid": "clickhouse" },
+          "format": 1,
+          "rawSql": "SELECT\n  toString(cohort_date) AS \"Когорта\",\n  maxIf(pct, day_index = 0) AS \"Day 0\",\n  maxIf(pct, day_index = 1) AS \"Day 1\",\n  maxIf(pct, day_index = 2) AS \"Day 2\",\n  maxIf(pct, day_index = 3) AS \"Day 3\",\n  maxIf(pct, day_index = 4) AS \"Day 4\",\n  maxIf(pct, day_index = 5) AS \"Day 5\",\n  maxIf(pct, day_index = 6) AS \"Day 6\",\n  maxIf(pct, day_index = 7) AS \"Day 7\"\nFROM cinema.cohort_retention\nGROUP BY cohort_date\nORDER BY cohort_date DESC\nLIMIT 30"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "auto",
+            "cellOptions": { "type": "color-background" },
+            "filterable": true
+          },
+          "unit": "percent",
+          "decimals": 1,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "dark-red", "value": null },
+              { "color": "semi-dark-orange", "value": 20 },
+              { "color": "semi-dark-yellow", "value": 40 },
+              { "color": "green", "value": 60 },
+              { "color": "dark-green", "value": 80 }
+            ]
+          },
+          "mappings": []
+        },
+        "overrides": [
+          {
+            "matcher": { "id": "byName", "options": "Когорта" },
+            "properties": [
+              { "id": "custom.cellOptions", "value": { "type": "auto" } },
+              { "id": "unit", "value": "short" }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "showHeader": true,
+        "sortBy": [{ "displayName": "Когорта", "desc": true }]
+      }
+    },
+    {
+      "id": 2,
+      "type": "timeseries",
+      "title": "DAU (уникальные пользователи в день)",
+      "datasource": { "type": "grafana-clickhouse-datasource", "uid": "clickhouse" },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 9 },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": { "type": "grafana-clickhouse-datasource", "uid": "clickhouse" },
+          "format": 0,
+          "rawSql": "SELECT\n  toDateTime(date) AS time,\n  argMax(dau, calculated_at) AS dau\nFROM cinema.daily_overview\nGROUP BY date\nORDER BY date"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 15,
+            "showPoints": "always",
+            "spanNulls": true
+          },
+          "color": { "mode": "palette-classic" }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": { "displayMode": "list", "placement": "bottom", "showLegend": true },
+        "tooltip": { "mode": "multi", "sort": "none" }
+      }
+    },
+    {
+      "id": 3,
+      "type": "timeseries",
+      "title": "Конверсия просмотра (VIEW_FINISHED / VIEW_STARTED)",
+      "datasource": { "type": "grafana-clickhouse-datasource", "uid": "clickhouse" },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 9 },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": { "type": "grafana-clickhouse-datasource", "uid": "clickhouse" },
+          "format": 0,
+          "rawSql": "SELECT\n  toDateTime(date) AS time,\n  argMax(view_conversion, calculated_at) AS conversion\nFROM cinema.daily_overview\nGROUP BY date\nORDER BY date"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "min": 0,
+          "max": 1,
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 15,
+            "showPoints": "always",
+            "spanNulls": true
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": { "displayMode": "list", "placement": "bottom", "showLegend": true },
+        "tooltip": { "mode": "single", "sort": "none" }
+      }
+    },
+    {
+      "id": 4,
+      "type": "timeseries",
+      "title": "Retention D1 / D7",
+      "datasource": { "type": "grafana-clickhouse-datasource", "uid": "clickhouse" },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 17 },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": { "type": "grafana-clickhouse-datasource", "uid": "clickhouse" },
+          "format": 0,
+          "rawSql": "SELECT\n  toDateTime(date) AS time,\n  argMax(value, calculated_at) AS \"Retention D1\"\nFROM cinema.daily_retention\nWHERE metric = 'retention_d1'\nGROUP BY date\nORDER BY date"
+        },
+        {
+          "refId": "B",
+          "datasource": { "type": "grafana-clickhouse-datasource", "uid": "clickhouse" },
+          "format": 0,
+          "rawSql": "SELECT\n  toDateTime(date) AS time,\n  argMax(value, calculated_at) AS \"Retention D7\"\nFROM cinema.daily_retention\nWHERE metric = 'retention_d7'\nGROUP BY date\nORDER BY date"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "min": 0,
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 10,
+            "showPoints": "always",
+            "spanNulls": true
+          },
+          "color": { "mode": "palette-classic" }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": { "displayMode": "list", "placement": "bottom", "showLegend": true },
+        "tooltip": { "mode": "multi", "sort": "none" }
+      }
+    },
+    {
+      "id": 5,
+      "type": "timeseries",
+      "title": "Среднее время завершённого просмотра, сек",
+      "datasource": { "type": "grafana-clickhouse-datasource", "uid": "clickhouse" },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 17 },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": { "type": "grafana-clickhouse-datasource", "uid": "clickhouse" },
+          "format": 0,
+          "rawSql": "SELECT\n  toDateTime(date) AS time,\n  argMax(avg_view_seconds, calculated_at) AS avg_view_seconds\nFROM cinema.daily_overview\nGROUP BY date\nORDER BY date"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 15,
+            "showPoints": "always",
+            "spanNulls": true
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": { "displayMode": "list", "placement": "bottom", "showLegend": true },
+        "tooltip": { "mode": "single", "sort": "none" }
+      }
+    },
+    {
+      "id": 6,
+      "type": "table",
+      "title": "Топ фильмов по просмотрам",
+      "datasource": { "type": "grafana-clickhouse-datasource", "uid": "clickhouse" },
+      "gridPos": { "h": 10, "w": 24, "x": 0, "y": 25 },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": { "type": "grafana-clickhouse-datasource", "uid": "clickhouse" },
+          "format": 1,
+          "rawSql": "SELECT\n  toString(date) AS \"Дата\",\n  movie_id AS \"Фильм\",\n  argMax(views_started, calculated_at) AS \"Начато просмотров\",\n  argMax(views_finished, calculated_at) AS \"Досмотрено\",\n  argMax(likes, calculated_at) AS \"Лайки\",\n  round(argMax(avg_progress_seconds, calculated_at), 0) AS \"Средний прогресс, сек\"\nFROM cinema.daily_top_movies\nGROUP BY date, movie_id\nORDER BY date DESC, \"Начато просмотров\" DESC\nLIMIT 100"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": { "align": "auto", "cellOptions": { "type": "auto" }, "filterable": true },
+          "unit": "short",
+          "decimals": 0
+        },
+        "overrides": []
+      },
+      "options": {
+        "showHeader": true,
+        "sortBy": [
+          { "displayName": "Дата", "desc": true },
+          { "displayName": "Начато просмотров", "desc": true }
+        ]
+      }
+    }
+  ]
+}
